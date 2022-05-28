@@ -6,8 +6,10 @@ import digitalio
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
 import subprocess
-
-broker_address = "192.168.1.79"  # Broker address
+cmd = "hostname -I | cut -d\' \' -f1"
+IP = subprocess.check_output(cmd, shell = True )
+# print("192.168.1.79/"+str(IP,'utf-8')[:-1])
+broker_address = str(IP,'utf-8')[:-1]  # Broker address
 port = 1883  # Broker port
 # user = "yourUser"                    #Connection username
 # password = "yourPassword"            #Connection password
@@ -82,8 +84,9 @@ client.connect(broker_address, port=port)  # connect to broker
 while True:
     
     draw.rectangle((0, 0, oled.width, oled.height), outline=0, fill=0)
-    cmd = "hostname -I | cut -d\' \' -f1"
-    IP = subprocess.check_output(cmd, shell = True )
+    # cmd = "hostname -I | cut -d\' \' -f1"
+    # IP = subprocess.check_output(cmd, shell = True )
+    # print("/"+str(IP,'utf-8')[:-2]+"/")
     cmd = "date +%x | cut -d\' \' -f1"
     Date = subprocess.check_output(cmd, shell = True )
     cmd = "date +%X | cut -d\' \' -f1"
