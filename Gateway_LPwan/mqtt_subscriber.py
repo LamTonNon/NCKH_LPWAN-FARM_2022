@@ -6,19 +6,25 @@ import digitalio
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
 import subprocess
-
+Time_pump ='17:49'
+Delay_pump = '1'
+IP   = ""
 Temp = "xx"
 Humi = "xx"
-
+Pump = 0
 # Host config
-cmd = "hostname -I | cut -d\' \' -f1"
-IP = subprocess.check_output(cmd, shell = True )
-# print("192.168.1.79/"+str(IP,'utf-8')[:-1])
+IP = subprocess.check_output("hostname -I | cut -d\' \' -f1", shell = True ) #IP="192.168.1.79 "
 broker_address = str(IP,'utf-8')[:-1]  # Broker address
 port = 1883  # Broker port
 # user = "yourUser"                    #Connection username
 # password = "yourPassword"            #Connection password
+class Pump_control_time:
+	def __init__(self, time_start='hh:mm',how_long='m'):
+		self.hour = int(time_start[0:2])
+		self.minu = int(time_start[3:5])
+		self.delay = int(how_long[0:])
 
+timepump = Pump_control_time(time_start = Time_pump, how_long = Delay_pump)
 # ssd_i2c config
 # Define the Reset Pin
 oled_reset = digitalio.DigitalInOut(board.D4)
@@ -43,7 +49,7 @@ font = ImageFont.truetype('PixelOperator.ttf', 16)
 #font = ImageFont.load_default()
 
 def on_connect(client, userdata, flags, rc):
-    # print("Connected with result code " + str(rc))
+    # print("Connected with result code " + str(rc)) #rc=0 connected 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
     client.subscribe("NbIoT/Farm/+", 2)
@@ -61,37 +67,61 @@ def on_message(client, userdata, message):
     if message.topic == 'NbIoT/Farm/Humi':
         with open('/home/pi/Gateway_LPwan/mqtt_update.txt', 'a+') as f:
             f.write("H:"+str(message.payload,'utf-8')[:-1]+"\n")
+    if message.topic == 'NbIoT/Farm/Pump':
+        with open('/home/pi/Gateway_LPwan/mqtt_update.txt', 'a+') as f:
+            f.write("P:0"+str(message.payload,'utf-8')+"\n")
+def on_publish(client, userdata, mid):
+    # print("Message " + str(mid) + " published.")
+    pass
 
 client = mqtt.Client()  # create new instance
 # client.username_pw_set(user, password=password)    #set username and password
 client.on_connect = on_connect  # attach function to callback
 client.on_message = on_message  # attach function to callback
+client.on_publish = on_publish  # attach function to callback
 client.connect(broker_address, port=port)  # connect to broker
 
 while True:
     
     draw.rectangle((0, 0, oled.width, oled.height), outline=0, fill=0)
-    # cmd = "hostname -I | cut -d\' \' -f1"
-    # IP = subprocess.check_output(cmd, shell = True )
-    # print("/"+str(IP,'utf-8')[:-2]+"/")
+    
     cmd = "date +%x | cut -d\' \' -f1"
     Date = subprocess.check_output(cmd, shell = True )
     cmd = "date +%X | cut -d\' \' -f1"
     Hour = subprocess.check_output(cmd, shell = True )
+    cmd = "date +%H | cut -d\' \' -f1"
+    TH = int(subprocess.check_output(cmd, shell = True ))
+    cmd = "date +%M | cut -d\' \' -f1"
+    TP = int(subprocess.check_output(cmd, shell = True ))
+    
+    
+    
     draw.text((0, 0), "IP: " + str(IP,'utf-8'), font=font, fill=255)
     draw.text((0, 16), "Time: " + str(Hour,'utf-8')[:-4], font=font, fill=255)
     draw.text((73, 16), " " + str(Date,'utf-8'), font=font, fill=255)
     client.loop_start()
     client.loop_stop()
-    cmd = " tail -1 mqtt_update.txt | cut -d\' \' -f1"
+    cmd = " tail -1 /home/pi/Gateway_LPwan/mqtt_update.txt | cut -d\' \' -f1"
     ToH = subprocess.check_output(cmd, shell = True )
     ToH = str(ToH,'utf-8')
     # print("/"+ToH[18:19]+"/")
     if ToH[18:19] == "T":
         Temp = ToH[20:22]
-    else:
+    elif ToH[18:19] == "H":
         Humi = ToH[20:22]
-    draw.text((0, 32), "Temperature: " + Temp +"'C", font=font, fill=255)
-    draw.text((0, 48), "Humidity: "+ Humi +" %", font=font, fill=255)
+    draw.text((0, 32), "Temp: " + Temp +"'C", font=font, fill=255)
+    draw.text((68, 32), "Humi: "+ Humi +"%", font=font, fill=255)
+    if TH == timepump.hour and TP == timepump.minu and Pump == 0:
+        client.publish("NbIoT/Farm/Pump", "1", qos=2)
+        Pump = 1
+        # print(Humi)
+    elif TH == timepump.hour and TP == timepump.minu + timepump.delay and Pump == 1:
+        client.publish("NbIoT/Farm/Pump", "0", qos=2)
+        Pump = 0
+
+    if Pump == 1:
+        draw.text((0, 48), "Pump: "+ "On", font=font, fill=255)
+    else:
+        draw.text((0, 48), "Pump: "+ "Off", font=font, fill=255)
     oled.image(image)
     oled.show()
