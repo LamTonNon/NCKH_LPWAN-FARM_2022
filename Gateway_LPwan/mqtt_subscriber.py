@@ -6,18 +6,22 @@ import digitalio
 from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
 import subprocess
+
 Time_pump ='17:49'
-Delay_pump = '1'
+Delay_pump = '01'
+
 IP   = ""
 Temp = "xx"
 Humi = "xx"
 Pump = 0
+
 # Host config
 IP = subprocess.check_output("hostname -I | cut -d\' \' -f1", shell = True ) #IP="192.168.1.79 "
 broker_address = str(IP,'utf-8')[:-1]  # Broker address
 port = 1883  # Broker port
 # user = "yourUser"                    #Connection username
 # password = "yourPassword"            #Connection password
+
 class Pump_control_time:
 	def __init__(self, time_start='hh:mm',how_long='m'):
 		self.hour = int(time_start[0:2])
@@ -25,6 +29,7 @@ class Pump_control_time:
 		self.delay = int(how_long[0:])
 
 timepump = Pump_control_time(time_start = Time_pump, how_long = Delay_pump)
+
 # ssd_i2c config
 # Define the Reset Pin
 oled_reset = digitalio.DigitalInOut(board.D4)
@@ -93,8 +98,6 @@ while True:
     TH = int(subprocess.check_output(cmd, shell = True ))
     cmd = "date +%M | cut -d\' \' -f1"
     TP = int(subprocess.check_output(cmd, shell = True ))
-    
-    
     
     draw.text((0, 0), "IP: " + str(IP,'utf-8'), font=font, fill=255)
     draw.text((0, 16), "Time: " + str(Hour,'utf-8')[:-4], font=font, fill=255)
