@@ -2,5 +2,11 @@
 - GateWay:
   + mqtt_subscriber.py
   + PixelOperator.ttf
+  + mqtt_update.txt
 - Node:
-  + bla
+  + include
+    + bg95.h
+  + src
+    + bg95.cpp
+    + main.cpp
+  + platformio.ini
