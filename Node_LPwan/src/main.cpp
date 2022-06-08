@@ -2,42 +2,119 @@
 #include "HardwareSerial.h"
 #include "bg95.h"
 #include <time.h>
+#include <Adafruit_Sensor.h>
+#include "Adafruit_BME680.h"
+#include <Wire.h>
 
-#define BROKER              "42.115.161.106"
-#define SUB_TOPIC1          "NbIoT/Farm/+"
-#define SEND_TOPIC1         "NbIoT/Farm/Temp"
-#define SEND_TOPIC2         "NbIoT/Farm/Humi"
+//broker va cac topic 
+#define BROKER                        "broker.hivemq.com"
+#define SUB_TOPIC_SEVER_SEND          "bg95/test1"
+#define SEND_TOPIC_TEMPERATURE        "bg95/test1"
+#define SEND_TOPIC_HUMIDITY           "bg95/test1"
+#define SEND_TOPIC_REPORT             "bg95/test1"    
+
+
+#define SEALEVELPRESSURE_HPA (1013.25)
+
+Adafruit_BME680 bme; // I2C
+
 
 
 Bg95 nbiot;
+int mode;
+float temperature, humidity;
 
-// ls ghi phan xu ly tin hieu nhan ve vao day
-void Bg95::checkRecieved(String &received, void *args){
-	if (received.indexOf("+QMTSTAT: 1,1") >= 0){
-		reset();
-		return;
-	}
-	if (received.indexOf("+QMTRECV:") >= 0){
-		//TODO: co the chen them phan xu ly hoac chuyen mode o day tuy thuoc vao quy tac dat giu lieu
-		return;
-	}
+//TODO: viet phan xu ly tin hieu nhan ve o day
+void receiveData(void *arg){
+  while(1){
+    String data;
+    nbiot.readMqtt(data);
+    if (data.indexOf("QMTRECV:")){
+      if (data.indexOf("") >= 0) {
+      }
+    }else if (data.indexOf ("QMTSTAT: 1,1")){
+      nbiot.connectMqtt (BROKER, "localhost", "");
+    }
+  vTaskDelay (1000/portTICK_PERIOD_MS);
+  }
 }
 
+//TODO: viet phan xu ly tin hieu gui di o day
+void sendData (void *arg){
+  while(1){
+    String data = String (temperature) + "C";
+    nbiot.sendMqtt (SEND_TOPIC_TEMPERATURE, data, 2);
+    data = String (humidity) + "%";
+    nbiot.sendMqtt (SEND_TOPIC_HUMIDITY, data ,2);
+    vTaskDelay (1000/portTICK_PERIOD_MS);
+  }
+}
+
+// doc tin hieu tu cam bien
+void readSensorData(void *arg){
+  while(1){
+    if (! bme.performReading()) {
+      Serial.println("Failed to perform reading :(");
+    }
+    temperature = bme.temperature;
+    humidity = bme.humidity;
+    vTaskDelay(1000/portTICK_PERIOD_MS);
+  }
+}
+
+
 void setup() {
-  // put your setup code here, to run once:
-  // DEBUG.begin(9600);
-  // BG95.begin(115200,SERIAL_8N1,16,17);
-  // BG95.println("AT");
-  // DEBUG.println(BG95.readString());
-  // BG95.println("AT+QMTOPEN=1,\"broker.hivemq.com\",1883");
-  // DEBUG.println(BG95.readString());
-  while(!nbiot.begin());
+  // tao cac task
+  xTaskCreate(
+    receiveData,
+    "receiveData",
+    2048,
+    NULL,
+    1,
+    NULL
+  );
+
+  xTaskCreate(
+    sendData,
+    "sendData",
+    2048,
+    NULL,
+    2,
+    NULL
+  );
+
+  xTaskCreate(
+    readSensorData,
+    "readSensorData",
+    2048,
+    NULL,
+    3,
+    NULL
+  );
+
+// tao ket noi mqtt
+  nbiot.begin();
   nbiot.connectMqtt(BROKER, "localhost","");
-  nbiot.subscribeMqtt(SUB_TOPIC1,2);
+  nbiot.subscribeMqtt(SUB_TOPIC_SEVER_SEND,2);
+  String data = "123";
+  nbiot.sendMqtt(SEND_TOPIC_REPORT, data, 2);
+
+//ket noi cam bien 
+  if (!bme.begin()) {
+    Serial.println("Could not find a valid BME680 sensor, check wiring!");
+    while (1);
+  }
+
+  // Set up oversampling and filter initialization
+  bme.setTemperatureOversampling(BME680_OS_8X);
+  bme.setHumidityOversampling(BME680_OS_2X);
+  bme.setPressureOversampling(BME680_OS_4X);
+  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+  bme.setGasHeater(320, 150); // 320*C for 150 ms
+
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-
 }
 
