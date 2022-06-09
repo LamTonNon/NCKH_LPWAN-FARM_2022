@@ -8,11 +8,11 @@
 
 //broker va cac topic 
 #define BROKER                        "broker.hivemq.com"
-#define SUB_TOPIC_SEVER_SEND          "bg95/test1"
-#define SEND_TOPIC_TEMPERATURE        "bg95/test1"
-#define SEND_TOPIC_HUMIDITY           "bg95/test1"
-#define SEND_TOPIC_REPORT             "bg95/test1"    
-
+#define SUB_TOPIC_SEVER_SEND          "NbIoT/Farm/Pump"
+#define SEND_TOPIC_TEMPERATURE        "NbIoT/Farm/Temp"
+#define SEND_TOPIC_HUMIDITY           "NbIoT/Farm/Humi"
+#define SEND_TOPIC_REPORT             "NbIoT/Farm/Pump"    
+#define RELAY                         23
 
 #define SEALEVELPRESSURE_HPA (1013.25)
 
@@ -21,7 +21,7 @@ Adafruit_BME680 bme; // I2C
 
 
 Bg95 nbiot;
-int mode;
+int mode = 0;
 float temperature, humidity;
 
 //TODO: viet phan xu ly tin hieu nhan ve o day
@@ -30,11 +30,22 @@ void receiveData(void *arg){
     String data;
     nbiot.readMqtt(data);
     if (data.indexOf("QMTRECV:")){
-      if (data.indexOf("") >= 0) {
+      for (int i = 0; i < 3; i++){
+        data = data.substring(data.indexOf(",")+1);
       }
-    }else if (data.indexOf ("QMTSTAT: 1,1")){
+      Serial.println(data);
+      if (data.indexOf("0") >= 0) {
+        mode = 0;
+      }else if(data.indexOf("1") >= 0){
+        mode = 1;
+      }
+    }
+    
+    else if (data.indexOf ("QMTSTAT: 1,1")){
       nbiot.connectMqtt (BROKER, "localhost", "");
     }
+
+
   vTaskDelay (1000/portTICK_PERIOD_MS);
   }
 }
@@ -42,11 +53,12 @@ void receiveData(void *arg){
 //TODO: viet phan xu ly tin hieu gui di o day
 void sendData (void *arg){
   while(1){
-    String data = String (temperature) + "C";
+    String data = String (temperature);
     nbiot.sendMqtt (SEND_TOPIC_TEMPERATURE, data, 2);
-    data = String (humidity) + "%";
+    data = String (humidity);
     nbiot.sendMqtt (SEND_TOPIC_HUMIDITY, data ,2);
-    vTaskDelay (1000/portTICK_PERIOD_MS);
+    delay (5000);
+    vTaskDelay (5000/portTICK_PERIOD_MS);
   }
 }
 
@@ -61,6 +73,20 @@ void readSensorData(void *arg){
     vTaskDelay(1000/portTICK_PERIOD_MS);
   }
 }
+
+void control(void *arg){
+  while(1){
+    if (mode == 1){
+      digitalWrite(RELAY, HIGH);
+      Serial.println("relay on");
+    }
+    else if (mode == 0){
+      digitalWrite(RELAY, LOW);
+      Serial.println("relay off");
+    }
+    vTaskDelay(1000/portTICK_PERIOD_MS);
+  }
+} 
 
 
 void setup() {
@@ -92,12 +118,20 @@ void setup() {
     NULL
   );
 
+  xTaskCreate(
+    control,
+    "control",
+    1024,
+    NULL,
+    3,
+    NULL
+  );
+
 // tao ket noi mqtt
+  pinMode(RELAY, OUTPUT);
   nbiot.begin();
   nbiot.connectMqtt(BROKER, "localhost","");
   nbiot.subscribeMqtt(SUB_TOPIC_SEVER_SEND,2);
-  String data = "123";
-  nbiot.sendMqtt(SEND_TOPIC_REPORT, data, 2);
 
 //ket noi cam bien 
   if (!bme.begin()) {
