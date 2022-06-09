@@ -154,7 +154,7 @@ bool Bg95::checkSendMqtt(String &data){
 }
 
 bool Bg95::checkConnection(){
-	int timeout = 3000;
+	int timeout = 15000;
 	String response;
 	bool ok = false;
 	bool error = false;
