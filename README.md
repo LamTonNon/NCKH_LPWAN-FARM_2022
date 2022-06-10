@@ -10,3 +10,6 @@
     + bg95.cpp
     + main.cpp
   + platformio.ini
+
+References: 
+Raspberry: https://www.raspberrypi.com/documentation/
