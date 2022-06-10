@@ -42,7 +42,7 @@ void receiveData(void *arg){
     }
     
     else if (data.indexOf ("QMTSTAT: 1,1")){
-      nbiot.connectMqtt (BROKER, "localhost", "");
+      nbiot.reconnectMqtt();
     }
 
 
@@ -54,11 +54,12 @@ void receiveData(void *arg){
 void sendData (void *arg){
   while(1){
     String data = String (temperature);
-    nbiot.sendMqtt (SEND_TOPIC_TEMPERATURE, data, 2);
+    nbiot.sendMqtt (SEND_TOPIC_TEMPERATURE, data, 1);
+    delay(3000);
     data = String (humidity);
-    nbiot.sendMqtt (SEND_TOPIC_HUMIDITY, data ,2);
-    delay (5000);
-    vTaskDelay (5000/portTICK_PERIOD_MS);
+    nbiot.sendMqtt (SEND_TOPIC_HUMIDITY, data ,1);
+    delay (3000);
+    vTaskDelay (3000/portTICK_PERIOD_MS);
   }
 }
 
@@ -70,6 +71,7 @@ void readSensorData(void *arg){
     }
     temperature = bme.temperature;
     humidity = bme.humidity;
+    delay(1000);
     vTaskDelay(1000/portTICK_PERIOD_MS);
   }
 }
@@ -77,20 +79,40 @@ void readSensorData(void *arg){
 void control(void *arg){
   while(1){
     if (mode == 1){
-      digitalWrite(RELAY, HIGH);
+      digitalWrite(RELAY, LOW);
       Serial.println("relay on");
     }
     else if (mode == 0){
-      digitalWrite(RELAY, LOW);
+      digitalWrite(RELAY, HIGH);
       Serial.println("relay off");
     }
+    delay (1000);
     vTaskDelay(1000/portTICK_PERIOD_MS);
   }
 } 
 
 
 void setup() {
-  // tao cac task
+// tao ket noi mqtt
+  pinMode(RELAY, OUTPUT);
+  nbiot.begin();
+  nbiot.connectMqtt(BROKER, "localhost","");
+  nbiot.subscribeMqtt(SUB_TOPIC_SEVER_SEND,2);
+
+//ket noi cam bien 
+  if (!bme.begin()) {
+    Serial.println("Could not find a valid BME680 sensor, check wiring!");
+    while (1);
+  }
+
+  // Set up oversampling and filter initialization
+  bme.setTemperatureOversampling(BME680_OS_8X);
+  bme.setHumidityOversampling(BME680_OS_2X);
+  bme.setPressureOversampling(BME680_OS_4X);
+  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
+  bme.setGasHeater(320, 150); // 320*C for 150 ms
+
+    // tao cac task
   xTaskCreate(
     receiveData,
     "receiveData",
@@ -127,28 +149,8 @@ void setup() {
     NULL
   );
 
-// tao ket noi mqtt
-  pinMode(RELAY, OUTPUT);
-  nbiot.begin();
-  nbiot.connectMqtt(BROKER, "localhost","");
-  nbiot.subscribeMqtt(SUB_TOPIC_SEVER_SEND,2);
-
-//ket noi cam bien 
-  if (!bme.begin()) {
-    Serial.println("Could not find a valid BME680 sensor, check wiring!");
-    while (1);
-  }
-
-  // Set up oversampling and filter initialization
-  bme.setTemperatureOversampling(BME680_OS_8X);
-  bme.setHumidityOversampling(BME680_OS_2X);
-  bme.setPressureOversampling(BME680_OS_4X);
-  bme.setIIRFilterSize(BME680_FILTER_SIZE_3);
-  bme.setGasHeater(320, 150); // 320*C for 150 ms
-
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-}
+void loop(){
 
+}
