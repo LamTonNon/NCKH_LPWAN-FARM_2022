@@ -57,6 +57,10 @@ bool Bg95::connectMqtt(String broker ,String name, String password){
 	return flag;
 }
 
+bool Bg95::reconnectMqtt(){
+	return connectBroker();
+}
+
 bool Bg95::connectClient(){
 	bool flag = false;
 	String atCommand = "AT+QMTCONN=1,\"" + getClientName() + "\",\"" + getClientPassword() + "\"";
