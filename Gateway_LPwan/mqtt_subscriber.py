@@ -7,8 +7,9 @@ from PIL import Image, ImageDraw, ImageFont
 import adafruit_ssd1306
 import subprocess
 
-Time_pump ='17:49'
-Delay_pump = '01'
+Time_pump1 ='23:52'
+Time_pump2 ='23:54'
+Delay_pump = '1'
 
 IP   = ""
 Temp = "xx"
@@ -23,12 +24,16 @@ port = 1883  # Broker port
 # password = "yourPassword"            #Connection password
 
 class Pump_control_time:
-	def __init__(self, time_start='hh:mm',how_long='m'):
+	def __init__(self, time_start='hh:mm',how_long='mm'):
 		self.hour = int(time_start[0:2])
 		self.minu = int(time_start[3:5])
-		self.delay = int(how_long[0:])
+		if how_long != 'mm':
+			self.delay = int(how_long[0:])
+		else:
+			self.delay = 0
 
-timepump = Pump_control_time(time_start = Time_pump, how_long = Delay_pump)
+timepump1 = Pump_control_time(time_start = Time_pump1, how_long = Delay_pump)
+timepump2 = Pump_control_time(time_start = Time_pump2, how_long = Delay_pump)
 
 # ssd_i2c config
 # Define the Reset Pin
@@ -95,10 +100,7 @@ while True:
     cmd = "date +%X | cut -d\' \' -f1"
     Hour = subprocess.check_output(cmd, shell = True )
     cmd = "date +%H | cut -d\' \' -f1"
-    TH = int(subprocess.check_output(cmd, shell = True ))
-    cmd = "date +%M | cut -d\' \' -f1"
-    TP = int(subprocess.check_output(cmd, shell = True ))
-    
+    Time_ref = Pump_control_time(time_start = str(Hour,'utf-8')[:-4])
     draw.text((0, 0), "IP: " + str(IP,'utf-8'), font=font, fill=255)
     draw.text((0, 16), "Time: " + str(Hour,'utf-8')[:-4], font=font, fill=255)
     draw.text((73, 16), " " + str(Date,'utf-8'), font=font, fill=255)
@@ -114,14 +116,22 @@ while True:
         Humi = ToH[20:22]
     draw.text((0, 32), "Temp: " + Temp +"'C", font=font, fill=255)
     draw.text((68, 32), "Humi: "+ Humi +"%", font=font, fill=255)
-    if TH == timepump.hour and TP == timepump.minu and Pump == 0:
+
+    if (Time_ref.hour == timepump1.hour and Time_ref.minu == timepump1.minu) and Pump == 0:
         client.publish("NbIoT/Farm/Pump", "1", qos=2)
         Pump = 1
-        # print(Humi)
-    elif TH == timepump.hour and TP == timepump.minu + timepump.delay and Pump == 1:
+        print('ok')
+    elif (Time_ref.hour == timepump1.hour and Time_ref.minu == timepump1.minu + timepump1.delay) and Pump == 1:
         client.publish("NbIoT/Farm/Pump", "0", qos=2)
         Pump = 0
-
+    elif (Time_ref.hour == timepump2.hour and Time_ref.minu == timepump2.minu) and Pump == 0:
+        client.publish("NbIoT/Farm/Pump", "1", qos=2)
+        Pump = 1
+    elif (Time_ref.hour == timepump2.hour and Time_ref.minu == timepump2.minu + timepump2.delay) and Pump == 1:
+        client.publish("NbIoT/Farm/Pump", "0", qos=2)
+        Pump = 0
+    
+    
     if Pump == 1:
         draw.text((0, 48), "Pump: "+ "On", font=font, fill=255)
     else:
