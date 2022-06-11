@@ -27,6 +27,7 @@ class Bg95 {
         bool connectMqtt(String broker, String name, String password);
         bool subscribeMqtt(String topic, uint8_t qos);
         bool sendMqtt(String topic, String &data, int qos);
+        void readMqtt(String &data);
         //TODO: viet not cac ham sau
         bool closeConnection();
         bool unSubscribeMqtt();
@@ -66,7 +67,6 @@ class Bg95 {
         String receiveAT();
         void printAT(String text);
         bool checkRespForPoweredDown ();
-        void checkRecieved (String &received, void *args);
 };
 
 

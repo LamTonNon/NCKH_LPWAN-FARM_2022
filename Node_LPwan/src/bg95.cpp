@@ -1,5 +1,7 @@
 #include "bg95.h"
 
+void (*resetFunc)(void) = 0;
+
 Bg95::Bg95(){
     ip = "";
     imei = "";
@@ -53,6 +55,10 @@ bool Bg95::connectMqtt(String broker ,String name, String password){
 		flag = connectClient();
 	}
 	return flag;
+}
+
+bool Bg95::reconnectMqtt(){
+	return connectBroker();
 }
 
 bool Bg95::connectClient(){
@@ -118,6 +124,10 @@ bool Bg95::sendMqtt(String topic, String &data, int qos){
 	return flag;
 }
 
+void Bg95::readMqtt(String &data){
+	data = receiveAT();
+}
+
 bool Bg95::checkSendMqtt(String &data){
 	int timeout = 15000;
 	String response;
@@ -148,7 +158,7 @@ bool Bg95::checkSendMqtt(String &data){
 }
 
 bool Bg95::checkConnection(){
-	int timeout = 3000;
+	int timeout = 15000;
 	String response;
 	bool ok = false;
 	bool error = false;
@@ -159,8 +169,9 @@ bool Bg95::checkConnection(){
 		ok = (response.indexOf("+QMTOPEN: 1,0") >=0 );
 		error = (response.indexOf("\r\nERROR\r\n") >= 0);
 		// TODO: neu gap QMTOPEN: 1,2 thi se dong ket noi roi ket noi lai
-		if (response.indexOf("QMTOPEN: 1,2") >= 0){
+		if (response.indexOf("QMTOPEN: 1,2") >= 0 || response.indexOf("+QMTOPEN: 1,4") >= 0 || response.indexOf("+QMTOPEN: 1,3") >= 0){
 				reset();
+				resetFunc();
 				break;
 		}
 	}
@@ -374,7 +385,6 @@ String Bg95::receiveAT(){
 #ifdef DEBUGMODE
 	printAT (received);					// DEBUG: Print response from BG96 module
 #endif
-	checkRecieved (received, NULL);
 	return received;	
 }
 
